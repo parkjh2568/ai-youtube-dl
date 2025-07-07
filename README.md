@@ -75,6 +75,26 @@ winget install FFmpeg
 # https://ffmpeg.org/download.html
 ```
 
+### 방법 3: GitHub Actions 자동 빌드 (모든 플랫폼)
+GitHub에서 자동으로 Windows/macOS/Linux용 실행 파일을 빌드합니다:
+
+1. **릴리즈 생성**:
+   ```bash
+   git tag v1.0.0
+   git push origin v1.0.0
+   ```
+
+2. **자동 빌드**: GitHub Actions가 자동으로 모든 플랫폼용 실행 파일 생성
+
+3. **다운로드**: [Releases 페이지](https://github.com/parkjh2568/ai-youtube-dl/releases)에서 다운로드
+
+#### 💻 크로스 플랫폼 빌드 지원:
+- ✅ **Windows**: `YouTube-MP3-Downloader.exe`
+- ✅ **macOS**: `YouTube-MP3-Downloader` (Intel/Apple Silicon)
+- ✅ **Linux**: `YouTube-MP3-Downloader`
+
+> **참고**: macOS에서 빌드한 파일은 Windows에서 실행되지 않습니다. 각 플랫폼별로 빌드가 필요합니다.
+
 ## 🚀 사용 방법
 
 ### 기본 실행

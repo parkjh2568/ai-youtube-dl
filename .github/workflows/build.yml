@@ -1,0 +1,110 @@
+name: Build Executables
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+        include:
+          - os: windows-latest
+            executable_name: YouTube-MP3-Downloader.exe
+            artifact_name: youtube-mp3-downloader-windows
+          - os: macos-latest
+            executable_name: YouTube-MP3-Downloader
+            artifact_name: youtube-mp3-downloader-macos
+          - os: ubuntu-latest
+            executable_name: YouTube-MP3-Downloader
+            artifact_name: youtube-mp3-downloader-linux
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Install FFmpeg (Windows)
+      if: runner.os == 'Windows'
+      run: |
+        choco install ffmpeg
+
+    - name: Install FFmpeg (macOS)
+      if: runner.os == 'macOS'
+      run: |
+        brew install ffmpeg
+
+    - name: Install FFmpeg (Linux)
+      if: runner.os == 'Linux'
+      run: |
+        sudo apt update
+        sudo apt install -y ffmpeg
+
+    - name: Build executable
+      run: |
+        pyinstaller --onefile --console --name "YouTube-MP3-Downloader" \
+          --add-data "README.md${{ runner.os == 'Windows' && ';' || ':' }}." \
+          --hidden-import "yt_dlp" \
+          --hidden-import "colorama" \
+          --hidden-import "ffmpeg" \
+          --clean \
+          youtube_downloader.py
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v3
+      with:
+        name: ${{ matrix.artifact_name }}
+        path: dist/${{ matrix.executable_name }}
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Download all artifacts
+      uses: actions/download-artifact@v3
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          youtube-mp3-downloader-windows/YouTube-MP3-Downloader.exe
+          youtube-mp3-downloader-macos/YouTube-MP3-Downloader
+          youtube-mp3-downloader-linux/YouTube-MP3-Downloader
+        body: |
+          ## 🎵 YouTube MP3 다운로더 Release
+          
+          ### 📦 다운로드
+          - **Windows**: `YouTube-MP3-Downloader.exe`
+          - **macOS**: `YouTube-MP3-Downloader` (Intel/Apple Silicon 모두 지원)
+          - **Linux**: `YouTube-MP3-Downloader`
+          
+          ### ⚠️ 사전 요구사항
+          - **FFmpeg 설치 필요**:
+            - Windows: `winget install FFmpeg`
+            - macOS: `brew install ffmpeg`
+            - Ubuntu: `sudo apt install ffmpeg`
+          
+          ### 🚀 사용법
+          1. 해당 OS용 실행 파일 다운로드
+          2. FFmpeg 설치
+          3. 실행 파일을 더블클릭하거나 터미널에서 실행
+          
+          Cursor AI와 Claude Sonnet 4로 제작된 고성능 다운로더입니다! 🤖✨
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} 
