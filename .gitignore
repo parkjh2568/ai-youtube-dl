@@ -29,6 +29,11 @@ wheels/
 .installed.cfg
 *.egg
 
+# PyInstaller 관련
+*.spec
+build/
+dist/
+
 # 가상환경
 venv/
 env/

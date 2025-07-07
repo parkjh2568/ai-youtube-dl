@@ -47,6 +47,34 @@ sudo apt install ffmpeg
 pip install -r requirements.txt
 ```
 
+## 💻 Windows exe 파일 빌드
+
+Windows에서 실행 가능한 단일 exe 파일을 생성할 수 있습니다.
+
+### 방법 1: 배치 파일 사용 (추천)
+```cmd
+build.bat
+```
+
+### 방법 2: Python 스크립트 사용
+```bash
+python build.py
+```
+
+### 빌드 후:
+- `dist/YouTube-MP3-Downloader.exe` 파일이 생성됩니다
+- FFmpeg가 설치된 Windows PC에서 실행 가능
+- 단일 exe 파일로 어디서나 실행 가능 (약 50-100MB)
+
+### Windows에서 FFmpeg 설치:
+```cmd
+# winget 사용 (Windows 10/11)
+winget install FFmpeg
+
+# 또는 수동 설치
+# https://ffmpeg.org/download.html
+```
+
 ## 🚀 사용 방법
 
 ### 기본 실행
