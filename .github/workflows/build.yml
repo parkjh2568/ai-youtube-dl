@@ -77,20 +77,54 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
     
     steps:
     - uses: actions/checkout@v4
     
     - name: Download all artifacts
       uses: actions/download-artifact@v4
+      with:
+        path: artifacts
+    
+    - name: Display structure of downloaded files
+      run: find artifacts -type f
+    
+    - name: Prepare release files
+      run: |
+        mkdir -p release_files
+        # Windows
+        if [ -f "artifacts/youtube-mp3-downloader-windows/YouTube-MP3-Downloader.exe" ]; then
+          cp "artifacts/youtube-mp3-downloader-windows/YouTube-MP3-Downloader.exe" "release_files/"
+          echo "✅ Windows exe found"
+        else
+          echo "❌ Windows exe not found"
+        fi
+        
+        # macOS
+        if [ -f "artifacts/youtube-mp3-downloader-macos/YouTube-MP3-Downloader" ]; then
+          cp "artifacts/youtube-mp3-downloader-macos/YouTube-MP3-Downloader" "release_files/YouTube-MP3-Downloader-macos"
+          echo "✅ macOS binary found"
+        else
+          echo "❌ macOS binary not found"
+        fi
+        
+        # Linux
+        if [ -f "artifacts/youtube-mp3-downloader-linux/YouTube-MP3-Downloader" ]; then
+          cp "artifacts/youtube-mp3-downloader-linux/YouTube-MP3-Downloader" "release_files/YouTube-MP3-Downloader-linux"
+          echo "✅ Linux binary found"
+        else
+          echo "❌ Linux binary not found"
+        fi
+        
+        echo "Final release files:"
+        ls -la release_files/
     
     - name: Create Release
-      uses: softprops/action-gh-release@v1
+      uses: softprops/action-gh-release@v2
       with:
-        files: |
-          youtube-mp3-downloader-windows/YouTube-MP3-Downloader.exe
-          youtube-mp3-downloader-macos/YouTube-MP3-Downloader
-          youtube-mp3-downloader-linux/YouTube-MP3-Downloader
+        files: release_files/*
         body: |
           ## 🎵 YouTube MP3 다운로더 Release
           
