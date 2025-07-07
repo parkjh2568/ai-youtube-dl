@@ -90,10 +90,40 @@ GitHub에서 자동으로 Windows/macOS/Linux용 실행 파일을 빌드합니�
 
 #### 💻 크로스 플랫폼 빌드 지원:
 - ✅ **Windows**: `YouTube-MP3-Downloader.exe`
-- ✅ **macOS**: `YouTube-MP3-Downloader` (Intel/Apple Silicon)
-- ✅ **Linux**: `YouTube-MP3-Downloader`
+- ✅ **macOS**: `YouTube-MP3-Downloader-macos` (Intel/Apple Silicon)
+- ✅ **Linux**: `YouTube-MP3-Downloader-linux`
 
 > **참고**: macOS에서 빌드한 파일은 Windows에서 실행되지 않습니다. 각 플랫폼별로 빌드가 필요합니다.
+
+### 🍎 macOS 보안 이슈 해결법
+
+macOS에서 "개발자를 확인할 수 없음" 오류가 나타날 경우:
+
+#### 방법 1: 우클릭으로 실행
+1. 파일을 **우클릭** → **열기** 클릭
+2. "열기" 버튼 클릭하여 실행
+
+#### 방법 2: 시스템 설정에서 허용
+1. **시스템 설정** → **개인정보 보호 및 보안**
+2. **보안** 섹션에서 "확인되지 않은 개발자" 메시지 옆 **"그래도 열기"** 클릭
+
+#### 방법 3: 터미널에서 실행 (추천)
+```bash
+# 다운로드 후
+chmod +x YouTube-MP3-Downloader-macos
+./YouTube-MP3-Downloader-macos
+```
+
+#### 방법 4: Gatekeeper 임시 해제 (고급 사용자)
+```bash
+# 임시 해제
+sudo spctl --master-disable
+
+# 실행 후 다시 활성화
+sudo spctl --master-enable
+```
+
+> 📚 **더 자세한 해결법**: [macOS 보안 이슈 완전 가이드](MACOS_SECURITY.md)를 참고하세요!
 
 ## 🚀 사용 방법
 

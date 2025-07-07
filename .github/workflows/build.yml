@@ -65,7 +65,26 @@ jobs:
     - name: Build executable (Unix)
       if: runner.os != 'Windows'
       run: |
-        pyinstaller --onefile --console --name "YouTube-MP3-Downloader" --add-data "README.md:." --hidden-import "yt_dlp" --hidden-import "colorama" --hidden-import "ffmpeg" --clean youtube_downloader.py
+        if [ "$RUNNER_OS" == "macOS" ]; then
+          # macOS 특별 옵션: 보안 이슈 완화
+          pyinstaller --onefile --console --name "YouTube-MP3-Downloader" \
+            --add-data "README.md:." \
+            --hidden-import "yt_dlp" \
+            --hidden-import "colorama" \
+            --hidden-import "ffmpeg" \
+            --osx-bundle-identifier "com.cursor.youtube-mp3-downloader" \
+            --clean \
+            youtube_downloader.py
+        else
+          # Linux 빌드
+          pyinstaller --onefile --console --name "YouTube-MP3-Downloader" --add-data "README.md:." --hidden-import "yt_dlp" --hidden-import "colorama" --hidden-import "ffmpeg" --clean youtube_downloader.py
+        fi
+
+    - name: Set executable permissions (macOS/Linux)
+      if: runner.os != 'Windows'
+      run: |
+        chmod +x dist/YouTube-MP3-Downloader
+        ls -la dist/
 
     - name: Upload artifact
       uses: actions/upload-artifact@v4
