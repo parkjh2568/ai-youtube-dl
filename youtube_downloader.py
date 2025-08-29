@@ -8,6 +8,8 @@ import os
 import sys
 import re
 import time
+import tempfile
+import shutil
 from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 import yt_dlp
@@ -22,6 +24,8 @@ class YouTubeMP3Downloader:
         self.download_path.mkdir(exist_ok=True)
         self.audio_quality = '192'  # 기본값
         self.audio_format = 'mp3'  # 기본값
+        self.use_cookies = False  # 쿠키 사용 여부
+        self.cookies_file = None  # 쿠키 파일 경로
         
         # yt-dlp 기본 설정
         self.base_ydl_opts = {
@@ -39,6 +43,146 @@ class YouTubeMP3Downloader:
             'ignoreerrors': False,
         }
     
+    def setup_cookies(self):
+        """브라우저 쿠키 설정"""
+        print(f"\n{Fore.CYAN}🍪 인증 방식을 선택하세요:{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}1. 자동 브라우저 쿠키 추출 (로그인된 계정으로 다운로드){Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}2. 수동 쿠키 파일 사용 (cookies.txt 파일){Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}3. 쿠키 사용 안함 (익명 다운로드){Style.RESET_ALL}")
+        
+        while True:
+            try:
+                choice = input(f"{Fore.GREEN}선택 (1-3): {Style.RESET_ALL}").strip()
+                
+                if choice == '1':
+                    self.use_cookies = True
+                    if self.extract_chrome_cookies():
+                        print(f"{Fore.GREEN}✅ 브라우저 쿠키 설정 완료{Style.RESET_ALL}")
+                    else:
+                        print(f"{Fore.RED}❌ 쿠키 파일이 생성되지 않았습니다.{Style.RESET_ALL}")
+                        print(f"{Fore.YELLOW}⚠️  쿠키 추출에 실패했습니다. 익명으로 다운로드합니다.{Style.RESET_ALL}")
+                        self.use_cookies = False
+                    return
+                elif choice == '2':
+                    self.use_cookies = True
+                    if self.setup_manual_cookies():
+                        print(f"{Fore.GREEN}✅ 수동 쿠키 파일 설정 완료{Style.RESET_ALL}")
+                    else:
+                        print(f"{Fore.YELLOW}⚠️  쿠키 파일 설정에 실패했습니다. 익명으로 다운로드합니다.{Style.RESET_ALL}")
+                        self.use_cookies = False
+                    return
+                elif choice == '3':
+                    self.use_cookies = False
+                    print(f"{Fore.GREEN}✅ 익명 다운로드 모드{Style.RESET_ALL}")
+                    return
+                else:
+                    print(f"{Fore.RED}잘못된 선택입니다. 1, 2, 또는 3을 입력하세요.{Style.RESET_ALL}")
+            except KeyboardInterrupt:
+                print(f"\n{Fore.RED}선택이 취소되었습니다.{Style.RESET_ALL}")
+                self.use_cookies = False
+                return
+    
+    def setup_manual_cookies(self):
+        """수동 쿠키 파일 설정"""
+        print(f"\n{Fore.CYAN}📁 쿠키 파일 경로를 입력하세요:{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}💡 cookies.txt 파일 경로 (예: C:\\Users\\사용자명\\cookies.txt){Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}💡 또는 Enter를 눌러 현재 디렉토리의 cookies.txt 사용{Style.RESET_ALL}")
+        print(f"{Fore.RED}💡 쿠키 파일이 없으면 'help'를 입력하여 생성 방법을 확인하세요{Style.RESET_ALL}")
+        
+        try:
+            cookie_path = input(f"{Fore.GREEN}쿠키 파일 경로: {Style.RESET_ALL}").strip()
+            
+            if cookie_path.lower() == 'help':
+                self.show_cookie_help()
+                return self.setup_manual_cookies()  # 다시 입력받기
+            
+            if not cookie_path:
+                cookie_path = "cookies.txt"
+            
+            if os.path.exists(cookie_path):
+                self.cookies_file = cookie_path
+                return True
+            else:
+                print(f"{Fore.RED}❌ 쿠키 파일을 찾을 수 없습니다: {cookie_path}{Style.RESET_ALL}")
+                print(f"{Fore.YELLOW}💡 'help'를 입력하여 쿠키 파일 생성 방법을 확인하세요{Style.RESET_ALL}")
+                return False
+                
+        except KeyboardInterrupt:
+            print(f"\n{Fore.RED}입력이 취소되었습니다.{Style.RESET_ALL}")
+            return False
+    
+    def show_cookie_help(self):
+        """쿠키 파일 생성 도움말"""
+        print(f"\n{Fore.CYAN}🍪 쿠키 파일 생성 방법:{Style.RESET_ALL}")
+        print(f"{Fore.YELLOW}1. 브라우저 확장 프로그램 사용:{Style.RESET_ALL}")
+        print(f"   - Chrome: 'Get cookies.txt' 확장 프로그램")
+        print(f"   - Firefox: 'cookies.txt' 확장 프로그램")
+        print(f"   - Edge: 'Get cookies.txt' 확장 프로그램")
+        print(f"\n{Fore.YELLOW}2. 수동으로 생성:{Style.RESET_ALL}")
+        print(f"   - 브라우저 개발자 도구 → Application → Cookies")
+        print(f"   - YouTube 도메인의 쿠키를 복사하여 cookies.txt 파일 생성")
+        print(f"\n{Fore.YELLOW}3. 쿠키 파일 형식:{Style.RESET_ALL}")
+        print(f"   domain\\tHTTPONLY\\tpath\\tSECURE\\texpiry\\tname\\tvalue")
+        print(f"   .youtube.com\\tTRUE\\t/\\tTRUE\\t1735689600\\tVISITOR_INFO1_LIVE\\t...")
+        print(f"\n{Fore.RED}⚠️  주의: 쿠키 파일에는 민감한 정보가 포함될 수 있습니다{Style.RESET_ALL}")
+        print(f"{Fore.RED}   다운로드 완료 후 쿠키 파일을 삭제하는 것을 권장합니다{Style.RESET_ALL}")
+        
+        input(f"\n{Fore.GREEN}계속하려면 Enter를 누르세요...{Style.RESET_ALL}")
+    
+    def extract_chrome_cookies(self):
+        """브라우저 쿠키 추출"""
+        try:
+            print(f"{Fore.YELLOW}🍪 브라우저에서 쿠키를 추출하는 중...{Style.RESET_ALL}")
+            
+            # 임시 쿠키 파일 생성
+            temp_cookies = tempfile.NamedTemporaryFile(delete=False, suffix='.txt')
+            temp_cookies.close()
+            self.cookies_file = temp_cookies.name
+            
+            # 지원하는 브라우저 목록
+            browsers = ['chrome', 'firefox', 'edge', 'safari', 'opera']
+            
+            for browser in browsers:
+                try:
+                    print(f"{Fore.YELLOW}   🔍 {browser.capitalize()} 시도 중...{Style.RESET_ALL}")
+                    
+                    # yt-dlp로 브라우저 쿠키 추출
+                    cookie_opts = {
+                        'cookiesfrombrowser': (browser,),
+                        'cookiefile': self.cookies_file,
+                        'quiet': True
+                    }
+                    
+                    # 테스트용 URL로 쿠키 추출 테스트
+                    test_url = "https://www.youtube.com"
+                    with yt_dlp.YoutubeDL(cookie_opts) as ydl:
+                        ydl.extract_info(test_url, download=False)
+                    
+                    print(f"{Fore.GREEN}   ✅ {browser.capitalize()} 쿠키 추출 성공!{Style.RESET_ALL}")
+                    return True
+                    
+                except Exception as e:
+                    print(f"{Fore.RED}   ❌ {browser.capitalize()} 실패: {str(e)[:50]}...{Style.RESET_ALL}")
+                    continue
+            
+            # 모든 브라우저 실패
+            print(f"{Fore.RED}❌ 모든 브라우저에서 쿠키 추출에 실패했습니다.{Style.RESET_ALL}")
+            if self.cookies_file and os.path.exists(self.cookies_file):
+                try:
+                    os.unlink(self.cookies_file)
+                except:
+                    pass
+            return False
+            
+        except Exception as e:
+            print(f"{Fore.RED}❌ 쿠키 추출 실패: {str(e)}{Style.RESET_ALL}")
+            if self.cookies_file and os.path.exists(self.cookies_file):
+                try:
+                    os.unlink(self.cookies_file)
+                except:
+                    pass
+            return False
+    
     def set_audio_quality(self, quality, format_type='mp3'):
         """오디오 품질 및 형식 설정"""
         self.audio_quality = quality
@@ -46,6 +190,10 @@ class YouTubeMP3Downloader:
         
         # yt-dlp 옵션 업데이트
         self.ydl_opts = self.base_ydl_opts.copy()
+        
+        # 쿠키 설정 추가
+        if self.use_cookies and self.cookies_file:
+            self.ydl_opts['cookiefile'] = self.cookies_file
         
         if format_type == 'flac':
             # FLAC 무손실 변환 설정
@@ -75,6 +223,7 @@ class YouTubeMP3Downloader:
 {Fore.CYAN}╔═══════════════════════════════════════════════════════════════╗
 ║                     YouTube MP3 다운로더                       ║
 ║                     3시간+ 긴 영상 전용                        ║
+║                    Chrome 쿠키 지원                            ║
 ╚═══════════════════════════════════════════════════════════════╝{Style.RESET_ALL}
         """)
     
@@ -226,6 +375,15 @@ class YouTubeMP3Downloader:
             print(f"\n{Fore.RED}❌ 오류 발생: {str(e)}{Style.RESET_ALL}")
             return False
     
+    def cleanup_cookies(self):
+        """임시 쿠키 파일 정리"""
+        if self.cookies_file and os.path.exists(self.cookies_file):
+            try:
+                os.unlink(self.cookies_file)
+                print(f"{Fore.YELLOW}🧹 임시 쿠키 파일을 정리했습니다.{Style.RESET_ALL}")
+            except:
+                pass
+    
     def run(self):
         """메인 실행 함수"""
         self.print_banner()
@@ -233,31 +391,38 @@ class YouTubeMP3Downloader:
         # 음질 선택 (프로그램 시작 시 한 번만)
         self.select_audio_quality()
         
-        while True:
-            try:
-                print(f"\n{Fore.CYAN}유튜브 URL을 입력하세요 (종료하려면 'q' 입력):{Style.RESET_ALL}")
-                url = input(f"{Fore.YELLOW}URL: {Style.RESET_ALL}").strip()
-                
-                if url.lower() == 'q':
-                    print(f"\n{Fore.CYAN}프로그램을 종료합니다. 안녕히 가세요!{Style.RESET_ALL}")
+        # 쿠키 설정
+        self.setup_cookies()
+        
+        try:
+            while True:
+                try:
+                    print(f"\n{Fore.CYAN}유튜브 URL을 입력하세요 (종료하려면 'q' 입력):{Style.RESET_ALL}")
+                    url = input(f"{Fore.YELLOW}URL: {Style.RESET_ALL}").strip()
+                    
+                    if url.lower() == 'q':
+                        print(f"\n{Fore.CYAN}프로그램을 종료합니다. 안녕히 가세요!{Style.RESET_ALL}")
+                        break
+                    
+                    if not url:
+                        print(f"{Fore.RED}URL을 입력해주세요.{Style.RESET_ALL}")
+                        continue
+                    
+                    success = self.download_mp3(url)
+                    
+                    if success:
+                        print(f"\n{Fore.GREEN}다른 영상을 다운로드하시겠습니까?{Style.RESET_ALL}")
+                    else:
+                        print(f"\n{Fore.RED}다시 시도하시겠습니까?{Style.RESET_ALL}")
+                    
+                except KeyboardInterrupt:
+                    print(f"\n\n{Fore.CYAN}프로그램을 종료합니다. 안녕히 가세요!{Style.RESET_ALL}")
                     break
-                
-                if not url:
-                    print(f"{Fore.RED}URL을 입력해주세요.{Style.RESET_ALL}")
-                    continue
-                
-                success = self.download_mp3(url)
-                
-                if success:
-                    print(f"\n{Fore.GREEN}다른 영상을 다운로드하시겠습니까?{Style.RESET_ALL}")
-                else:
-                    print(f"\n{Fore.RED}다시 시도하시겠습니까?{Style.RESET_ALL}")
-                
-            except KeyboardInterrupt:
-                print(f"\n\n{Fore.CYAN}프로그램을 종료합니다. 안녕히 가세요!{Style.RESET_ALL}")
-                break
-            except Exception as e:
-                print(f"\n{Fore.RED}예상치 못한 오류가 발생했습니다: {str(e)}{Style.RESET_ALL}")
+                except Exception as e:
+                    print(f"\n{Fore.RED}예상치 못한 오류가 발생했습니다: {str(e)}{Style.RESET_ALL}")
+        finally:
+            # 프로그램 종료 시 쿠키 파일 정리
+            self.cleanup_cookies()
 
 
 def main():
