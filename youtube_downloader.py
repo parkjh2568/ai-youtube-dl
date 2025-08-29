@@ -264,12 +264,12 @@ def main():
     """메인 함수"""
     try:
         # FFmpeg 설치 확인
-        if os.system("ffmpeg -version > /dev/null 2>&1") != 0:
-            print(f"{Fore.RED}⚠️  FFmpeg가 설치되지 않았습니다.{Style.RESET_ALL}")
-            print(f"{Fore.YELLOW}macOS: brew install ffmpeg{Style.RESET_ALL}")
-            print(f"{Fore.YELLOW}Ubuntu: sudo apt install ffmpeg{Style.RESET_ALL}")
-            print(f"{Fore.YELLOW}Windows: https://ffmpeg.org/download.html{Style.RESET_ALL}")
-            return
+        # if os.system("ffmpeg -version > /dev/null 2>&1") != 0:
+        #     print(f"{Fore.RED}⚠️  FFmpeg가 설치되지 않았습니다.{Style.RESET_ALL}")
+        #     print(f"{Fore.YELLOW}macOS: brew install ffmpeg{Style.RESET_ALL}")
+        #     print(f"{Fore.YELLOW}Ubuntu: sudo apt install ffmpeg{Style.RESET_ALL}")
+        #     print(f"{Fore.YELLOW}Windows: https://ffmpeg.org/download.html{Style.RESET_ALL}")
+        #     return
         
         downloader = YouTubeMP3Downloader()
         downloader.run()
